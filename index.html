@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What Should World Models Forget?</title>
+<meta name="description" content="Continual world models must revise what the world has invalidated. We stratify their knowledge by invariance timescale and propose differential retention, which reports invariant retention and revision latency separately, not as one forgetting score.">
+<meta property="og:title" content="What Should World Models Forget? Stratified Retention for Continual Adaptation">
+<meta property="og:description" content="NeurIPS 2026 Workshop on Continual World Models. Nishit Anand, Ramani Duraiswami, Dinesh Manocha (University of Maryland).">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://nishitanand.github.io/what-should-world-models-forget/">
+<meta property="og:image" content="https://nishitanand.github.io/what-should-world-models-forget/assets/fig1_a.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230F766E'/%3E%3Ctext x='16' y='23' font-family='Arial,sans-serif' font-size='20' font-weight='700' text-anchor='middle' fill='%23ffffff'%3E%CF%84%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap">
+<style>
+/* Project page for "What Should World Models Forget?". Plus Jakarta Sans; teal for the page;
+   the four stratum colours from Figure 1(a) (slate blue to amber) only for the strata. */
+:root {
+  --paper: #F3F8F7;
+  --band: #E5F1EE;
+  --panel: #FFFFFF;
+  --ink: #0A1F1C;
+  --muted: #4E6662;
+  --line: #D3E3DF;
+  --accent: #0F766E;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCF0EB;
+  --accent-2: #16A34A;
+  --good: #15803D;
+  --good-bg: #DDF4E5;
+  --bad: #B42318;
+  --bad-bg: #FDE4DE;
+  --warn: #9A6700;
+  --warn-bg: #FBEFCF;
+  --na: #7D918D;
+  --s1: #2F4858;
+  --s2: #5C7A6E;
+  --s3: #9A7A3A;
+  --s4: #B8862F;
+  --s1-bg: #D9E3E9;
+  --s2-bg: #DEE8E2;
+  --s3-bg: #EFE6D3;
+  --s4-bg: #F6ECD9;
+  --q-good: #E2EFE8;
+  --q-frozen: #F6E3E3;
+  --q-over: #F1EADB;
+  --q-broken: #EDD9D9;
+  --shadow: 0 1px 2px rgba(10, 31, 28, .05), 0 10px 30px rgba(15, 118, 110, .08);
+  --f: "Plus Jakarta Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #07130F; --band: #0B1C18; --panel: #10241F; --ink: #E3F2EE; --muted: #9BB5AF; --line: #1F3A34;
+    --accent: #2DD4BF; --accent-ink: #04201C; --accent-soft: #0E332D; --accent-2: #4ADE80;
+    --good: #4ADE80; --good-bg: #112B1D; --bad: #F87171; --bad-bg: #3A1717; --warn: #FACC15; --warn-bg: #33290B; --na: #6F8883;
+    --s1: #8FB3C9; --s2: #93BBA9; --s3: #D2B06A; --s4: #E7B95A;
+    --s1-bg: #18303D; --s2-bg: #193128; --s3-bg: #33291A; --s4-bg: #3A2C14;
+    --q-good: #15302A; --q-frozen: #3A1F22; --q-over: #33291A; --q-broken: #331A1C;
+    --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #07130F; --band: #0B1C18; --panel: #10241F; --ink: #E3F2EE; --muted: #9BB5AF; --line: #1F3A34;
+  --accent: #2DD4BF; --accent-ink: #04201C; --accent-soft: #0E332D; --accent-2: #4ADE80;
+  --good: #4ADE80; --good-bg: #112B1D; --bad: #F87171; --bad-bg: #3A1717; --warn: #FACC15; --warn-bg: #33290B; --na: #6F8883;
+  --s1: #8FB3C9; --s2: #93BBA9; --s3: #D2B06A; --s4: #E7B95A;
+  --s1-bg: #18303D; --s2-bg: #193128; --s3-bg: #33291A; --s4-bg: #3A2C14;
+  --q-good: #15302A; --q-frozen: #3A1F22; --q-over: #33291A; --q-broken: #331A1C;
+  --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.65 var(--f); }
+a { color: var(--accent); text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3, h4 { margin: 0; text-wrap: balance; letter-spacing: -0.02em; }
+h2 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; line-height: 1.1; }
+h3 { font-size: 1.22rem; font-weight: 700; line-height: 1.25; }
+p { margin: 0; }
+img { max-width: 100%; }
+button { font-family: var(--f); }
+.gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1160px; margin: 0 auto; }
+.narrow { max-width: 780px; margin: 0 auto; }
+.muted { color: var(--muted); }
+section { padding-block: clamp(56px, 8vw, 96px); }
+section.band { background: var(--band); }
+section[id] { scroll-margin-top: 64px; }
+.sec-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: clamp(28px, 4vw, 44px); text-align: center; align-items: center; }
+.sec-head .lead { color: var(--muted); max-width: 56ch; font-size: clamp(1.05rem, 1.8vw, 1.2rem); line-height: 1.55; }
+.grad { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.tau { font-style: italic; font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
+.tau-h { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-weight: 700; padding: 0 .14em 0 .04em; }
+
+/* nav */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--panel); }
+.topnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.topnav .in { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; }
+.topnav .brand { font: 800 1.12rem/1.1 var(--f); text-decoration: none; color: var(--ink); letter-spacing: -0.02em; }
+.topnav .brand span { color: var(--accent); }
+.topnav nav { display: flex; gap: 4px 22px; flex-wrap: wrap; justify-content: flex-end; }
+.topnav nav a { color: var(--muted); text-decoration: none; font: 600 .95rem/1.2 var(--f); padding: 4px 0; }
+.topnav nav a:hover { color: var(--accent); }
+@media (max-width: 860px) { .topnav nav a.opt { display: none; } }
+@media (max-width: 420px) { .topnav .brand { font-size: 1rem; } .topnav nav { gap: 4px 14px; } }
+
+/* header */
+header { padding-block: clamp(48px, 8vw, 92px) clamp(36px, 5vw, 60px); text-align: center; }
+header .wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.venue { font: 700 .82rem/1.3 var(--f); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.wordmark { font: 800 clamp(2.5rem, 7.2vw, 4.9rem)/1.02 var(--f); letter-spacing: -0.04em; max-width: 15ch; }
+.subtitle { font: 700 clamp(1.2rem, 2.6vw, 1.65rem)/1.25 var(--f); max-width: 32ch; letter-spacing: -0.015em; }
+.pitch { font: 600 clamp(1rem, 2vw, 1.15rem)/1.4 var(--f); color: var(--accent); background: var(--accent-soft); padding: 9px 20px; border-radius: 999px; max-width: 46ch; }
+.authors, .affils { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 18px; }
+.authors { font-size: 1.08rem; font-weight: 600; margin-top: 4px; }
+.affils { color: var(--muted); font-size: .95rem; }
+sup { font-size: .66em; color: var(--muted); }
+.logos img { height: 64px; width: auto; display: block; }
+.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 6px; }
+.btn { display: inline-flex; align-items: center; gap: 9px; padding: 13px 22px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); text-decoration: none; font: 600 1rem/1 var(--f); cursor: pointer; }
+.btn.ghost { background: var(--panel); color: var(--ink); border-color: var(--line); }
+.btn:hover { filter: brightness(1.06); }
+.btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn svg { width: 18px; height: 18px; }
+
+/* overview */
+.tldr { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 18px 22px; font-size: clamp(1.02rem, 1.7vw, 1.12rem); line-height: 1.6; display: flex; gap: 14px; align-items: baseline; margin-bottom: clamp(26px, 4vw, 40px); }
+.tldr b { flex: none; font: 800 .8rem/1 var(--f); letter-spacing: .1em; color: var(--accent-ink); background: var(--accent); padding: 6px 10px; border-radius: 8px; }
+.overview-text { font-size: clamp(1.08rem, 1.9vw, 1.26rem); line-height: 1.62; text-align: center; }
+.overview-text b { font-weight: 700; }
+.pillars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: clamp(28px, 4vw, 44px); }
+.pillar { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow); }
+.pillar .ic { width: 42px; height: 42px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.pillar .ic svg { width: 22px; height: 22px; }
+.pillar .verb { font: 700 .74rem/1 var(--f); letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.pillar p { color: var(--muted); font-size: 1rem; }
+
+/* phenomena */
+.example { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin: 0 auto clamp(26px, 4vw, 38px); background: var(--panel); border: 1px dashed var(--line); border-radius: 16px; padding: 16px 20px; max-width: 820px; font-size: 1.02rem; }
+.example .lbl { font: 700 .74rem/1 var(--f); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.example .move { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; flex-wrap: wrap; justify-content: center; }
+.example .move svg { width: 22px; height: 22px; color: var(--accent); flex: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 13px; font-weight: 700; font-size: .9rem; border: 1px solid var(--line); background: var(--paper); color: var(--ink); white-space: nowrap; }
+.chip.old { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
+.chip.new { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.hook { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.hcard { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 22px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.hcard.ours { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), var(--shadow); }
+.hcard .def { color: var(--muted); }
+.hcard .eg { padding-top: 12px; border-top: 1px solid var(--line); font-size: .97rem; display: flex; flex-direction: column; gap: 4px; }
+.who { font: 700 .74rem/1 var(--f); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.badge { align-self: flex-start; font: 700 .8rem/1.2 var(--f); padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+.badge.good { color: var(--good); background: var(--good-bg); }
+.badge.bad { color: var(--bad); background: var(--bad-bg); }
+.badge.na { color: var(--muted); border: 1px solid var(--line); }
+.note { text-align: center; color: var(--muted); font-size: 1rem; margin: 22px auto 0; max-width: 70ch; }
+.note b { color: var(--ink); }
+
+/* strata */
+.strata { display: grid; grid-template-columns: minmax(0, 1fr) 132px; gap: 18px; align-items: stretch; }
+.srows { display: flex; flex-direction: column; gap: 10px; }
+.srow { display: grid; grid-template-columns: minmax(170px, 1.1fr) minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); gap: 14px 18px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--c); border-radius: 14px; padding: 14px 18px; box-shadow: var(--shadow); }
+.srow .nm { display: flex; flex-direction: column; gap: 4px; }
+.srow .nm b { font-size: 1.05rem; line-height: 1.25; }
+.srow .tv { align-self: flex-start; font: 700 .82rem/1 var(--f); color: var(--c); background: var(--cb); padding: 5px 9px; border-radius: 999px; }
+.srow .col { font-size: .93rem; color: var(--muted); line-height: 1.45; }
+.srow .col i { display: block; font-style: normal; font: 700 .68rem/1.2 var(--f); letter-spacing: .08em; text-transform: uppercase; color: var(--na); margin-bottom: 3px; }
+.srow .col.req { color: var(--ink); font-weight: 600; }
+.r1 { --c: var(--s1); --cb: var(--s1-bg); }
+.r2 { --c: var(--s2); --cb: var(--s2-bg); }
+.r3 { --c: var(--s3); --cb: var(--s3-bg); }
+.r4 { --c: var(--s4); --cb: var(--s4-bg); }
+.protect { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.protect .t { font: 700 .72rem/1.2 var(--f); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); text-align: center; }
+.protect svg { flex: 1; width: 100%; min-height: 220px; }
+.strata-head { display: grid; grid-template-columns: minmax(0, 1fr) 132px; gap: 18px; margin-bottom: 8px; }
+.cols { display: grid; grid-template-columns: minmax(170px, 1.1fr) minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); gap: 18px; padding: 0 18px 0 24px; font: 700 .72rem/1.2 var(--f); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.srow .col i { display: none; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.panel p { color: var(--muted); font-size: 1rem; }
+.panel p b { color: var(--ink); }
+.panel .k { font: 700 .74rem/1 var(--f); letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.sub { margin-top: clamp(36px, 5vw, 56px); margin-bottom: 18px; text-align: center; font-size: clamp(1.4rem, 2.6vw, 1.8rem); font-weight: 800; }
+.kalman { margin-top: 18px; text-align: center; color: var(--muted); font-size: 1rem; max-width: 74ch; margin-left: auto; margin-right: auto; }
+
+/* scorecard */
+.tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 640px; margin: 0 auto 22px; }
+.tab { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 14px; padding: 12px 16px; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 3px; }
+.tab b { font: 700 1.02rem/1.25 var(--f); }
+.tab small { font-size: .8rem; color: var(--muted); }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px rgba(15, 118, 110, .25); }
+.tab[aria-selected="true"] small { color: inherit; opacity: .85; }
+.stage { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: clamp(16px, 3vw, 30px); display: flex; flex-direction: column; gap: 20px; }
+.models { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.model { border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; background: var(--panel); }
+.model .nm { font: 800 1.1rem/1.2 var(--f); }
+.model .ds { font-size: .92rem; color: var(--muted); line-height: 1.45; }
+.model.win { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.facts { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.fact { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: .94rem; flex-wrap: wrap; }
+.verdict { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.verdict .big { font: 800 1.35rem/1.15 var(--f); letter-spacing: -0.02em; }
+.verdict .big.bad { color: var(--bad); }
+.verdict .big.good { color: var(--good); }
+.verdict .big.warn { color: var(--warn); }
+.verdict small { color: var(--muted); font-size: .88rem; line-height: 1.45; }
+.stage .take { text-align: center; font-size: 1.04rem; color: var(--muted); max-width: 70ch; margin: 0 auto; }
+.stage .take b { color: var(--ink); }
+.view[hidden] { display: none !important; }
+
+/* protocol */
+.measures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin-bottom: clamp(28px, 4vw, 44px); }
+.measure { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); border-top: 5px solid var(--accent); }
+.measure:nth-child(2) { border-top-color: var(--accent-2); }
+.measure .n { font: 700 .78rem/1 var(--f); letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.measure h3 { font-size: 1.4rem; }
+.measure p { font-size: 1rem; color: var(--muted); }
+.measure p b { color: var(--ink); }
+.measure .eg { background: var(--accent-soft); color: var(--ink); border-radius: 10px; padding: 10px 14px; font-size: .95rem; }
+.quadwrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(22px, 4vw, 48px); align-items: center; }
+.quad { display: grid; grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 6px; }
+.quad .ylab { grid-row: 1 / 3; grid-column: 1; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font: 700 .78rem/1 var(--f); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; padding-block: 8px; }
+.quad .cell { border-radius: 14px; padding: 16px; min-height: 132px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 4px; border: 1px solid var(--line); }
+.quad .cell b { font: 800 1.15rem/1.2 var(--f); }
+.quad .cell span { font-size: .86rem; color: var(--muted); line-height: 1.35; }
+.quad .q1 { background: var(--q-good); } .quad .q1 b { color: var(--good); }
+.quad .q2 { background: var(--q-frozen); } .quad .q2 b { color: var(--bad); }
+.quad .q3 { background: var(--q-over); }
+.quad .q4 { background: var(--q-broken); }
+.quad .xlab { grid-column: 2 / 4; display: flex; justify-content: space-between; font: 700 .78rem/1 var(--f); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 4px 0; }
+.quad .arrow { grid-column: 2 / 4; text-align: center; font-size: .9rem; color: var(--accent); font-weight: 700; }
+.qtext { display: flex; flex-direction: column; gap: 14px; font-size: 1.04rem; }
+.qtext p { color: var(--muted); }
+.qtext p b { color: var(--ink); }
+
+/* probes */
+.probes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+.probe { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); min-width: 0; }
+.probe h3 { font-size: 1.1rem; }
+.probe .row { display: flex; flex-direction: column; gap: 2px; font-size: .95rem; color: var(--muted); }
+.probe .row i { font-style: normal; font: 700 .68rem/1.2 var(--f); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.probe .row.pass { color: var(--ink); }
+
+/* open questions */
+.open { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.oq { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; box-shadow: var(--shadow); }
+.oq .n { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; }
+.oq h3 { font-size: 1.12rem; margin-bottom: 6px; }
+.oq p { color: var(--muted); font-size: .98rem; }
+
+/* citation */
+.bib { position: relative; }
+.bib pre { font: .86rem/1.6 var(--f-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; padding-right: 96px; overflow-x: auto; margin: 0; color: var(--ink); }
+.bib .btn { position: absolute; top: 10px; right: 10px; padding: 8px 14px; font-size: .88rem; }
+footer { padding-block: 30px 60px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; text-align: center; }
+footer .wrap { display: flex; flex-direction: column; gap: 6px; }
+
+@media (max-width: 980px) {
+  .srow, .cols { grid-template-columns: minmax(150px, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); }
+  .srow .col.meas, .cols .meas { display: none; }
+}
+@media (max-width: 760px) {
+  .pillars, .hook, .two, .models, .measures, .quadwrap, .open { grid-template-columns: minmax(0, 1fr); }
+  .strata, .strata-head { grid-template-columns: minmax(0, 1fr); }
+  .strata-head { display: none; }
+  .protect { display: none; }
+  .srow { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .srow .col.meas { display: block; }
+  .srow .col i { display: block; }
+  .tldr { flex-direction: column; gap: 10px; }
+}
+@media (max-width: 460px) {
+  .tabs { grid-template-columns: minmax(0, 1fr); }
+  .quad .cell { min-height: 110px; padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="topnav gut"><div class="wrap in">
+<a class="brand" href="#top">What Should World Models <span>Forget?</span></a>
+<nav aria-label="Sections"><a class="opt" href="#overview">Overview</a><a class="opt" href="#strata">Strata</a><a href="#scorecard">Scorecard</a><a class="opt" href="#protocol">Protocol</a><a href="#bibtex">Citation</a></nav>
+</div></div>
+
+<header class="gut" id="top">
+<div class="wrap">
+<p class="venue">NeurIPS 2026 · Workshop on Continual World Models</p>
+<h1 class="wordmark">What Should World Models <span class="grad">Forget?</span></h1>
+<p class="subtitle">Stratified Retention for Continual Adaptation</p>
+<div class="authors">
+<span>Nishit Anand</span><span>Ramani Duraiswami<sup>†</sup></span><span>Dinesh Manocha<sup>†</sup></span>
+</div>
+<div class="affils">
+<span>University of Maryland, College Park, USA</span><span><sup>†</sup>Equal advising</span>
+</div>
+<div class="logos"><img src="assets/logos/umd.png" alt="University of Maryland"></div>
+<div class="links">
+<a class="btn" href="https://arxiv.org/abs/2610.03713" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>Paper</a>
+<a class="btn ghost" href="assets/paper.pdf" target="_blank" rel="noopener" id="pdf-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>PDF</a>
+<a class="btn ghost" href="#bibtex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 4c-2 0-3 1-3 3v3l-2 2 2 2v3c0 2 1 3 3 3M16 4c2 0 3 1 3 3v3l2 2-2 2v3c0 2-1 3-3 3"/></svg>BibTeX</a>
+</div>
+</div>
+</header>
+
+<section id="overview" class="band gut">
+<div class="wrap">
+<div class="tldr narrow"><b>TL;DR</b><span>Continual world models must revise what the world has invalidated. We stratify their knowledge by invariance timescale and propose differential retention, which reports invariant retention and revision latency separately, not as one forgetting score.</span></div>
+<div class="sec-head"><h2>When the world changes, <span class="grad">revising is not forgetting</span></h2></div>
+<p class="narrow overview-text">Continual learning treats any drop in performance on previously seen data as forgetting, a convention inherited from settings where the prediction target is stationary. A world model's target is the environment, which changes, so knowledge that was accurate when learned can later become false, and <b>revising it is correct behavior</b> rather than a defect. World models also encode structural knowledge, such as physical laws and object permanence, that <b>must never be degraded</b>.</p>
+<div class="pillars">
+<div class="pillar"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="verb">We argue</span><h3>Obsolescence</h3><p>Retaining knowledge that has become false is a failure mode of continual world models, distinct from catastrophic forgetting, and current benchmarks exclude it by construction.</p></div>
+<div class="pillar"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M6 11h12M8 16h8M10 21h4"/></svg></span><span class="verb">We propose</span><h3>Strata by invariance timescale</h3><p>Organize world-model knowledge by how long it stays true, <span class="tau">τ</span>, and protect knowledge more strongly the longer it stays true.</p></div>
+<div class="pillar"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20V4M4 20h16"/><path d="M8 15l3-4 3 2 5-6"/></svg></span><span class="verb">We propose</span><h3>Differential retention</h3><p>An evaluation protocol that measures invariant retention and revision latency separately, instead of one forgetting score.</p></div>
+</div>
+</div>
+</section>
+
+<section id="phenomena" class="gut">
+<div class="wrap">
+<div class="sec-head">
+<h2>Three phenomena, <span class="grad">one score</span></h2>
+<p class="lead">A household robot has learned where the furniture is. Then someone moves the chair. Current metrics cannot tell these three apart.</p>
+</div>
+<div class="example">
+<span class="lbl">The change</span>
+<span class="move"><span class="chip old">chair by the window</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="chip new">chair at the table</span></span>
+<span class="muted" style="font-size:.95rem">the table does not move</span>
+</div>
+<div class="hook">
+<div class="hcard"><span class="badge bad">A defect</span><h3>Catastrophic forgetting</h3><p class="def">The loss of knowledge that is still true.</p><div class="eg"><span class="who">In the house</span><span>Forgetting where the unmoved table stands.</span></div></div>
+<div class="hcard"><span class="badge na">Well studied</span><h3>Deliberate unlearning</h3><p class="def">The removal of knowledge that is still true but unwanted, for instance for privacy.</p><div class="eg"><span class="who">In the house</span><span>Not part of the robot example.</span></div></div>
+<div class="hcard ours"><span class="badge good">Revision required</span><h3>Obsolescence</h3><p class="def">The retention of knowledge that has become false.</p><div class="eg"><span class="who">In the house</span><span>Still predicting the chair by the window.</span></div></div>
+</div>
+<p class="note">Changing ground truth is well studied in concept drift and in the temporal factuality of language models, but it has not been formulated for world models. <b>World models are different:</b> alongside facts that change, they encode physical, geometric and causal structure, such as that unsupported objects fall and hidden objects continue to exist. That structure should survive every update, and no single label can check it.</p>
+</div>
+</section>
+
+<section id="strata" class="band gut">
+<div class="wrap">
+<div class="sec-head">
+<h2>Protection should grow with <span class="grad tau-h">τ</span></h2>
+<p class="lead">The invariance timescale <span class="tau">τ</span> is the expected time until the environment makes a piece of knowledge false. It is a property of the environment, not of the model.</p>
+</div>
+<div class="strata-head"><div class="cols"><span>Stratum</span><span>Examples</span><span>Required behavior</span><span class="meas">Measured by</span></div><div></div></div>
+<div class="strata">
+<div class="srows">
+<div class="srow r1"><div class="nm"><b>Invariants</b><span class="tv"><span class="tau">τ</span> = ∞</span></div><div class="col"><i>Examples</i>form of physical laws, object permanence, geometric consistency, action–effect structure</div><div class="col req"><i>Required behavior</i>refined, never degraded</div><div class="col meas"><i>Measured by</i>probes every round</div></div>
+<div class="srow r2"><div class="nm"><b>Environment regularities</b><span class="tv">long</span></div><div class="col"><i>Examples</i>room layout, road network, friction, mass, the agent's body</div><div class="col req"><i>Required behavior</i>revised on accumulated evidence</div><div class="col meas"><i>Measured by</i>latency; not revised by one-off events</div></div>
+<div class="srow r3"><div class="nm"><b>Instance configuration</b><span class="tv">short</span></div><div class="col"><i>Examples</i>object positions, door states, lighting</div><div class="col req"><i>Required behavior</i>revised promptly</div><div class="col meas"><i>Measured by</i>latency; never-revised count</div></div>
+<div class="srow r4"><div class="nm"><b>Transient state</b><span class="tv">immediate</span></div><div class="col"><i>Examples</i>who is moving where, momentary occlusion</div><div class="col req"><i>Required behavior</i>kept in current state, not in weights</div><div class="col meas"><i>Measured by</i>not measured</div></div>
+</div>
+<div class="protect" aria-label="Protection: current methods ignore tau; proposed protection grows with tau">
+<span class="t">Protection</span>
+<svg viewBox="0 0 120 300" preserveAspectRatio="none" aria-hidden="true">
+<rect x="10" y="6" width="30" height="288" rx="4" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="7 6"/>
+<path d="M66 6 L114 6 L94 294 L86 294 Z" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
+</svg>
+<span class="t" style="display:flex;gap:18px"><span>Current</span><span style="color:var(--accent)">Proposed</span></span>
+</div>
+</div>
+<p class="kalman"><b style="color:var(--ink)">Refined, never degraded.</b> A model's belief about an invariant may be wrong and should be refined as evidence accumulates, but it must never get worse. A Kalman filter makes this trade-off: its update rate falls as <span class="tau">τ</span> grows and, for <span class="tau">τ</span> = ∞, shrinks toward zero without reaching it.</p>
+
+<h3 class="sub">Current practice fails in both directions</h3>
+<div class="two">
+<div class="panel"><span class="k">Under-protected</span><h3>Invariants</h3><p>Standard pipelines do not check whether invariants survived an update. EWC protects parameters by their importance for earlier tasks, but <b>importance is not the same as persistence</b>: a parameter can encode a fact the environment has since invalidated, and EWC then protects it most strongly.</p></div>
+<div class="panel"><span class="k">Over-protected</span><h3>Lower strata</h3><p>A replay buffer that stores the old layout of a room <b>keeps reasserting it</b> after the room has changed. Methods that replace outdated exemplars or evict stale transitions address this; protecting invariants has no counterpart in either setting.</p></div>
+</div>
+</div>
+</section>
+
+<section id="scorecard" class="gut">
+<div class="wrap">
+<div class="sec-head">
+<h2>Forgetting metrics <span class="grad">reward the frozen model</span></h2>
+<p class="lead">Three robots are tested on their original test data after the chair has moved. Switch between how standard metrics score them and what differential retention reports.</p>
+</div>
+<div class="tabs" role="tablist" aria-label="Scoring">
+<button class="tab" role="tab" id="tab-fm" aria-controls="view-fm" aria-selected="true" type="button"><b>Forgetting metric</b><small>backward transfer, forgetting measure</small></button>
+<button class="tab" role="tab" id="tab-dr" aria-controls="view-dr" aria-selected="false" type="button"><b>Differential retention</b><small>what we propose</small></button>
+</div>
+<div class="stage">
+<div class="view" id="view-fm" role="tabpanel" aria-labelledby="tab-fm">
+<div class="models">
+<div class="model"><span class="nm">Correct</span><span class="ds">Revises the chair, keeps the table.</span><div class="facts"><div class="fact"><span>Chair</span><span class="badge good">revised</span></div><div class="fact"><span>Table</span><span class="badge good">kept</span></div></div><div class="verdict"><span class="big warn">Loses 1 item</span><small>The chair's old position now counts as forgetting.</small></div></div>
+<div class="model"><span class="nm">Broken</span><span class="ds">Keeps the stale chair, forgets the table.</span><div class="facts"><div class="fact"><span>Chair</span><span class="badge bad">stale</span></div><div class="fact"><span>Table</span><span class="badge bad">forgotten</span></div></div><div class="verdict"><span class="big warn">Loses 1 item</span><small>The same score as the correct model, although it failed twice.</small></div></div>
+<div class="model win"><span class="nm">Frozen</span><span class="ds">Never updated.</span><div class="facts"><div class="fact"><span>Chair</span><span class="badge bad">stale</span></div><div class="fact"><span>Table</span><span class="badge good">kept</span></div></div><div class="verdict"><span class="big good">Loses nothing</span><small>Receives the best score.</small></div></div>
+</div>
+<p class="take" style="margin-top:20px">Every correct revision counts as forgetting, so the metric favors models that revise as little as possible, and <b>the frozen model, the very failure continual adaptation is meant to remedy, scores best.</b></p>
+</div>
+<div class="view" id="view-dr" role="tabpanel" aria-labelledby="tab-dr" hidden>
+<div class="models">
+<div class="model win"><span class="nm">Correct</span><span class="ds">Revises the chair, keeps the table.</span><div class="facts"><div class="fact"><span>Revision latency (chair)</span><span class="badge good">revised</span></div><div class="fact"><span>Unchanged fact (table)</span><span class="badge good">retained</span></div></div><div class="verdict"><span class="big good">Behaves correctly</span><small>The drop on the old chair data is reported as a revision, not as damage.</small></div></div>
+<div class="model"><span class="nm">Broken</span><span class="ds">Keeps the stale chair, forgets the table.</span><div class="facts"><div class="fact"><span>Revision latency (chair)</span><span class="badge bad">never revised</span></div><div class="fact"><span>Unchanged fact (table)</span><span class="badge bad">lost</span></div></div><div class="verdict"><span class="big bad">Fails twice</span><small>Both failures are visible, and reported separately.</small></div></div>
+<div class="model"><span class="nm">Frozen</span><span class="ds">Never updated.</span><div class="facts"><div class="fact"><span>Revision latency (chair)</span><span class="badge bad">never revised</span></div><div class="fact"><span>Invariants, table</span><span class="badge good">retained</span></div></div><div class="verdict"><span class="big bad">Never revises</span><small>Loses no invariants, but its obsolescence is now visible.</small></div></div>
+</div>
+<p class="take" style="margin-top:20px">Refreshing the labels is not enough either: a model can fit the new room layout while degrading object permanence, because ordinary test data rarely exercises it. That is why <b>invariants are probed directly</b>.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section id="protocol" class="band gut">
+<div class="wrap">
+<div class="sec-head">
+<h2>Differential <span class="grad">retention</span></h2>
+<p class="lead">Two quantities, reported separately, because a single score would hide which failure occurred.</p>
+</div>
+<div class="measures">
+<div class="measure"><span class="n">Measurement (a)</span><h3>Invariant retention</h3><p>A fixed set of <b>probes</b>, small tests that each check one invariant, drawn from the <span class="tau">τ</span> = ∞ stratum and held out from the adaptation data. They are re-run <b>after every adaptation round</b>, because a single evaluation at the end cannot show which update damaged an invariant. Unchanged lower-stratum facts, such as the table, are re-tested alongside.</p><p class="eg">Hide a ball behind the couch. Does the model still predict the ball is there?</p></div>
+<div class="measure"><span class="n">Measurement (b)</span><h3>Revision latency</h3><p>For each fact the environment changes, <b>how many observations</b> the model needs before its predictions favor the new outcome over the old one on held-out queries. Facts that are <b>never revised</b> are counted separately. This generalizes the LoCA regret from a single local change to every changed fact.</p><p class="eg">How many times must the robot see the chair at the table?</p></div>
+</div>
+<div class="quadwrap">
+<div class="quad" role="img" aria-label="Quadrant: invariant retention against revision latency. High retention and fast revision is desired; high retention and slow revision is the frozen model, which gets the best forgetting score today; low retention and fast revision is overwriting; low retention and slow revision is broken.">
+<div class="ylab"><span>low</span><span>Invariant retention</span><span>high</span></div>
+<div class="cell q1"><b>Desired</b><span>keeps invariants, revises fast</span></div>
+<div class="cell q2"><b>Frozen</b><span>best forgetting score today</span></div>
+<div class="cell q3"><b>Overwriting</b><span>revises fast, damages invariants</span></div>
+<div class="cell q4"><b>Broken</b></div>
+<div class="arrow">← what adaptation should achieve</div>
+<div class="xlab"><span>fast</span><span>Revision latency</span><span>slow</span></div>
+</div>
+<div class="qtext">
+<p><b>Neither quantity is informative on its own.</b> A frozen model loses no invariants but never revises. A model that adapts by overwriting revises quickly but damages its invariants.</p>
+<p>Together, the two measurements place a model in one of four quadrants. Forgetting metrics alone reward high retention and slow revision, and so favor the frozen model.</p>
+<p>To our knowledge, such probes have not been applied as a regression suite across an adaptation stream.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section id="probes" class="gut">
+<div class="wrap">
+<div class="sec-head">
+<h2>Probes <span class="grad">beyond physics</span></h2>
+<p class="lead">Each kind of invariant needs its own probe. For action-conditioned or latent world models, a probe can read out the model's own prediction error.</p>
+</div>
+<div class="probes">
+<div class="probe"><h3>Physical laws (form)</h3><div class="row"><i>Probe</i>A possible and an impossible continuation of the same scene: a dropped cup that falls, or one that floats.</div><div class="row pass"><i>Pass</i>Higher surprise on the impossible continuation.</div></div>
+<div class="probe"><h3>Object permanence</h3><div class="row"><i>Probe</i>Hide an object behind an occluder, then remove the occluder: a ball behind the couch.</div><div class="row pass"><i>Pass</i>Object predicted to still be there; surprise if it has vanished.</div></div>
+<div class="probe"><h3>Impenetrability</h3><div class="row"><i>Probe</i>Move into a wall or a solid object.</div><div class="row pass"><i>Pass</i>Predicted state does not pass through it.</div></div>
+<div class="probe"><h3>Geometric consistency</h3><div class="row"><i>Probe</i>Loop closure, such as walking around the table; several views of one scene.</div><div class="row pass"><i>Pass</i>Predicted end state matches the start; views agree with each other.</div></div>
+<div class="probe"><h3>Causal action–effect</h3><div class="row"><i>Probe</i>From one state, compare two different actions, such as pushing or pulling the door; also the null action.</div><div class="row pass"><i>Pass</i>Predicted difference matches the simulator; the null action leaves a static scene unchanged.</div></div>
+</div>
+</div>
+</section>
+
+<section id="open-questions" class="band gut">
+<div class="wrap">
+<div class="sec-head">
+<h2>Open <span class="grad">questions</span></h2>
+</div>
+<div class="open">
+<div class="oq"><span class="n">1</span><div><h3>Estimating <span class="tau">τ</span></h3><p>The strata are a starting proposal with domain-dependent boundaries. In benchmarks <span class="tau">τ</span> is set by design; estimating it reliably in deployment, especially for slowly changing regularities, remains open.</p></div></div>
+<div class="oq"><span class="n">2</span><div><h3>Probes for geometry and causality</h3><p>Mature probes exist mainly for physical invariants in generative video models; probes for geometric and causal structure still need to be developed and validated.</p></div></div>
+<div class="oq"><span class="n">3</span><div><h3>Recurring knowledge</h3><p>A door that is open on some days and closed on others should be suspended and later reinstated rather than overwritten.</p></div></div>
+<div class="oq"><span class="n">4</span><div><h3>Entangled invariants</h3><p>If invariants are entangled with other knowledge inside a learned world model, protecting them separately may require architectural support.</p></div></div>
+</div>
+</div>
+</section>
+
+<section id="bibtex" class="gut">
+<div class="wrap narrow" style="display:flex;flex-direction:column;gap:18px">
+<h2 style="text-align:center">BibTeX</h2>
+<div class="bib">
+<pre id="bibtext">@inproceedings{anand2026whatshould,
+  title         = {What Should World Models Forget? Stratified Retention for Continual Adaptation},
+  author        = {Anand, Nishit and Duraiswami, Ramani and Manocha, Dinesh},
+  booktitle     = {NeurIPS 2026 Workshop on Continual World Models},
+  year          = {2026},
+  eprint        = {2610.03713},
+  archivePrefix = {arXiv},
+  url           = {https://arxiv.org/abs/2610.03713}
+}</pre>
+<button class="btn ghost" id="copybib" type="button">Copy</button>
+</div>
+</div>
+</section>
+
+<footer class="gut">
+<div class="wrap">
+<span>Contact: nishit@umd.edu</span>
+</div>
+</footer>
+
+<script>
+(function () {
+  var tabs = [document.getElementById("tab-fm"), document.getElementById("tab-dr")];
+  function show(t) {
+    tabs.forEach(function (x) {
+      var on = x === t;
+      x.setAttribute("aria-selected", on ? "true" : "false");
+      x.tabIndex = on ? 0 : -1;
+      document.getElementById(x.getAttribute("aria-controls")).hidden = !on;
+    });
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { show(t); });
+    t.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        var n = tabs[(i + 1) % 2]; show(n); n.focus(); e.preventDefault();
+      }
+    });
+  });
+  tabs[1].tabIndex = -1;
+
+  var btn = document.getElementById("copybib"), pre = document.getElementById("bibtext");
+  btn.addEventListener("click", function () {
+    var done = function () { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1600); };
+    var fallback = function () {
+      var r = document.createRange(); r.selectNodeContents(pre);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      try { if (document.execCommand("copy")) done(); } catch (e) {}
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pre.textContent).then(done, fallback);
+    } else { fallback(); }
+  });
+})();
+</script>
+</body>
+</html>
