@@ -4,7 +4,6 @@ Static site (a single HTML file, no build step) for the NeurIPS 2026 Workshop on
 
 ```
 index.html            the whole page (styles and script are inside it; same design as the AuditEar page)
-assets/paper.pdf      final camera-ready PDF
 assets/logos/umd.png  UMD logo
 assets/fig1_a.png     Figure 1(a), used as the link-preview image
 assets/fig1_b.png     Figure 1(b)
